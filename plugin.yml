@@ -14,3 +14,5 @@ commands:
     description: Show info about jail in general or a particular jailed player.
   jailreload:
     description: Reload the jail config.
+  novpns:
+    description: Turn off vpns.
