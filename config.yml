@@ -31,3 +31,5 @@ blocked_commands:
 # If your distro doesn't ship with these files by default, you can
 # download them from https://mailfud.org/geoip-legacy/
 geoipDatabase: null
+# Hours needed for using a vpn
+novpns: 0
