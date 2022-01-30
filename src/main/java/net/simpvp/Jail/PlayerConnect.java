@@ -7,11 +7,12 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
 
 import net.md_5.bungee.api.ChatColor;
+
+import java.net.InetAddress;
 
 public class PlayerConnect implements Listener,CommandExecutor{
 	
@@ -22,10 +23,10 @@ public class PlayerConnect implements Listener,CommandExecutor{
 		Jail.instance.getLogger().info("NoVpns set to " + hours_required);
 	}
 	
-	@EventHandler(priority = EventPriority.MONITOR)
+	@EventHandler()
 	public void onPlayerLogin(PlayerLoginEvent event) {
 		Player player = event.getPlayer();
-		if (!vpnAllowed(player)) {
+		if (!requiredConditions(player) && check_asn(player, event.getAddress())) {
 			event.disallow(PlayerLoginEvent.Result.KICK_OTHER, ChatColor.RED + "Please turn off your VPN to connect");
 			Jail.instance.getLogger().info("Blocking " + player.getDisplayName() + " from joining with a vpn");
 		}
@@ -37,9 +38,7 @@ public class PlayerConnect implements Listener,CommandExecutor{
 		if (sender instanceof Player) {
 			player = (Player) sender;
 			if (!player.isOp()) {
-				String msg = (hours_required < 0) ?
-						"Vpns are currently allowed" :
-						"Currently blocking players using vpns with less than " + hours_required + " hours played";
+				String msg = "Currently blocking players using vpns with less than " + hours_required + " hours played";
 				player.sendMessage(msg);
 				return true;
 			}
@@ -68,17 +67,17 @@ public class PlayerConnect implements Listener,CommandExecutor{
 		return true;
 	}
 	
-	/* Return true if player is allowed to join with a vpn */
-	private boolean vpnAllowed(Player p) {
+	/* Return true if player meets all required conditions */
+	private boolean requiredConditions(Player p) {
 		/* OPs can join unconditionally */
 		if (p.isOp()) {
 			return true;
 		}
 
 		/* Whitelisted players can join unconditionally */
-		if (p.isWhitelisted()) {
-			return true;
-		}
+		//if (p.isWhitelisted()) {
+		//	return true;
+		//}
 		
 		OfflinePlayer offplayer = Jail.instance.getServer().getOfflinePlayer(p.getUniqueId());
 		int hours = -1;
@@ -86,21 +85,20 @@ public class PlayerConnect implements Listener,CommandExecutor{
 			int played_ticks = p.getStatistic(Statistic.PLAY_ONE_MINUTE);
 			hours = played_ticks / (20 * 60 * 60);
 		}
-		if (hours < hours_required && vpn_check(p)) {
+		
+		if (hours < hours_required) {
 			return false;
 		}
-		
-		
 		return true;
 	}
 	
 	/* Return true if player has a vpn */
-	private boolean vpn_check(Player player) {
+	public boolean check_asn(Player player, InetAddress address) {
 		if (GeoIP.bad_asns == null || GeoIP.bad_asns.isEmpty()) {
 			return false;
 		}
 
-		String as = GeoIP.getAs(player.getAddress().getAddress());
+		String as = GeoIP.getAs(address);
 		Integer asn = GeoIP.getAsn(as);
 		if (asn == null) {
 			return false;
@@ -110,7 +108,6 @@ public class PlayerConnect implements Listener,CommandExecutor{
 		if (reason == null) {
 			return false;
 		}
-
 		return true;
 	}
 }
