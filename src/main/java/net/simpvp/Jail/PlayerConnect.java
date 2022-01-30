@@ -7,6 +7,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
 
@@ -16,17 +17,17 @@ import java.net.InetAddress;
 
 public class PlayerConnect implements Listener,CommandExecutor{
 	
-	private int hours_required = 0;
-	
-	public PlayerConnect() {
-		hours_required = Jail.instance.getConfig().getInt("novpns");
-		Jail.instance.getLogger().info("NoVpns set to " + hours_required);
+	private int hours_required;
+
+	public PlayerConnect(Jail plugin) {
+		hours_required = plugin.getConfig().getInt("novpns");
+		plugin.getLogger().info("NoVpns set to " + hours_required);
 	}
-	
-	@EventHandler()
+
+	@EventHandler(priority = EventPriority.HIGH, ignoreCancelled=true)
 	public void onPlayerLogin(PlayerLoginEvent event) {
 		Player player = event.getPlayer();
-		if (!requiredConditions(player) && check_asn(player, event.getAddress())) {
+		if (!requiredConditions(player) && GeoIP.check_asn(player, event.getAddress())) {
 			event.disallow(PlayerLoginEvent.Result.KICK_OTHER, ChatColor.RED + "Please turn off your VPN to connect");
 			Jail.instance.getLogger().info("Blocking " + player.getDisplayName() + " from joining with a vpn");
 		}
@@ -34,6 +35,7 @@ public class PlayerConnect implements Listener,CommandExecutor{
 	
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		Jail.instance.reloadConfig();
 		Player player = null;
 		if (sender instanceof Player) {
 			player = (Player) sender;
@@ -69,15 +71,16 @@ public class PlayerConnect implements Listener,CommandExecutor{
 	
 	/* Return true if player meets all required conditions */
 	private boolean requiredConditions(Player p) {
+
 		/* OPs can join unconditionally */
 		if (p.isOp()) {
 			return true;
 		}
 
 		/* Whitelisted players can join unconditionally */
-		//if (p.isWhitelisted()) {
-		//	return true;
-		//}
+		if (p.isWhitelisted()) {
+			return true;
+		}
 		
 		OfflinePlayer offplayer = Jail.instance.getServer().getOfflinePlayer(p.getUniqueId());
 		int hours = -1;
@@ -85,29 +88,12 @@ public class PlayerConnect implements Listener,CommandExecutor{
 			int played_ticks = p.getStatistic(Statistic.PLAY_ONE_MINUTE);
 			hours = played_ticks / (20 * 60 * 60);
 		}
-		
+
+		hours_required = Jail.instance.getConfig().getInt("novpns");
 		if (hours < hours_required) {
 			return false;
 		}
 		return true;
 	}
-	
-	/* Return true if player has a vpn */
-	public boolean check_asn(Player player, InetAddress address) {
-		if (GeoIP.bad_asns == null || GeoIP.bad_asns.isEmpty()) {
-			return false;
-		}
 
-		String as = GeoIP.getAs(address);
-		Integer asn = GeoIP.getAsn(as);
-		if (asn == null) {
-			return false;
-		}
-
-		String reason = GeoIP.bad_asns.get(asn);
-		if (reason == null) {
-			return false;
-		}
-		return true;
-	}
 }
