@@ -8,6 +8,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.ChatColor;
 
+import java.net.InetAddress;
 import java.util.ArrayList;
 
 public class PlayerLogin implements Listener {
@@ -31,7 +32,13 @@ public class PlayerLogin implements Listener {
 				}
 			}
 
-			check_asn(player);
+			InetAddress address = player.getAddress().getAddress();
+			if (GeoIP.check_asn(player, address)) {
+				String as = GeoIP.getAs(address);
+				Integer asn = GeoIP.getAsn(as);
+				String reason = GeoIP.bad_asns.get(asn);
+				message_admins(player,as,reason);
+			}
 
 			return;
 		}
@@ -74,23 +81,7 @@ public class PlayerLogin implements Listener {
 		jailedplayer.add();
 	}
 
-	private void check_asn(Player player) {
-		if (GeoIP.bad_asns == null || GeoIP.bad_asns.isEmpty()) {
-			return;
-		}
-
-		String as = GeoIP.getAs(player.getAddress().getAddress());
-		Integer asn = GeoIP.getAsn(as);
-		if (asn == null) {
-			return;
-		}
-
-		String reason = GeoIP.bad_asns.get(asn);
-		if (reason == null) {
-			Jail.instance.getLogger().info(String.format("%s is joining from %s", player.getName(), as));
-			return;
-		}
-
+	public void message_admins(Player player, String as, String reason) {
 		String msg = String.format("%s is joining from bad network %s. Listed reason: %s", player.getName(), as, reason);
 		Jail.instance.getLogger().info(msg);
 		for (Player p : Jail.instance.getServer().getOnlinePlayers()) {
