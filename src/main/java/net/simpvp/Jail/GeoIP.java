@@ -146,21 +146,21 @@ public class GeoIP {
 		return country.getCode();
 	}
 
-	public static boolean check_asn(Player player, InetAddress address) {
+	public static String check_asn(InetAddress address) {
 		if (GeoIP.bad_asns == null || GeoIP.bad_asns.isEmpty()) {
-			return false;
+			return null;
 		}
 
 		String as = GeoIP.getAs(address);
 		Integer asn = GeoIP.getAsn(as);
 		if (asn == null) {
-			return false;
+			return null;
 		}
 
 		String reason = GeoIP.bad_asns.get(asn);
 		if (reason == null) {
-			return false;
+			return null;
 		}
-		return true;
+		return reason;
 	}
 }
