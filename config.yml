@@ -32,4 +32,4 @@ blocked_commands:
 # download them from https://mailfud.org/geoip-legacy/
 geoipDatabase: null
 # Hours needed for using a vpn
-novpns: 0
+novpns: -1
