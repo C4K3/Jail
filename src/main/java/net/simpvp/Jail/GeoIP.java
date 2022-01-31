@@ -1,166 +1,96 @@
 package net.simpvp.Jail;
 
-import java.io.File;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import org.bukkit.configuration.Configuration;
-import org.bukkit.configuration.file.YamlConfiguration;
-
-import com.maxmind.geoip.Country;
-import com.maxmind.geoip.LookupService;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.ChatColor;
 
-public class GeoIP {
+import java.net.InetAddress;
+import java.util.ArrayList;
 
-	private static LookupService asn4 = null;
-	private static LookupService asn6 = null;
-	private static LookupService country4 = null;
-	private static LookupService country6 = null;
+public class PlayerLogin implements Listener {
 
-	// Key is ASN, value is reason it's added to list.
-	public static HashMap<Integer, String> bad_asns = null;
-
-	public static void init() {
-		String geoipDatabaseDir = Jail.instance.getConfig().getString("geoipDatabase");
-
-		if (geoipDatabaseDir == null) {
-			Jail.instance.getLogger().info("Not using geoip database");
-			return;
-		}
-
-		if (!geoipDatabaseDir.endsWith("/")) {
-			geoipDatabaseDir += "/";
-		}
-
-		try {
-			asn4 = new LookupService(geoipDatabaseDir + "GeoIPASNum.dat", LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
-			asn6 = new LookupService(geoipDatabaseDir + "GeoIPASNumv6.dat", LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
-			country4 = new LookupService(geoipDatabaseDir + "GeoIP.dat", LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
-			country6 = new LookupService(geoipDatabaseDir + "GeoIPv6.dat", LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
-
-			Jail.instance.getLogger().info("Initiated geoip database");
-		} catch (Exception e) {
-			Jail.instance.getLogger().severe("Error instantiating GeoIP database " + e);
-			e.printStackTrace();
-			return;
-		}
-
-		try {
-			File f = new File(Jail.instance.getDataFolder(), "bad_asns.yaml");
-			if (f.exists()) {
-				Configuration c = YamlConfiguration.loadConfiguration(f);
-				bad_asns = new HashMap<>();
-				for (Map<String, Object> value : (List<Map<String, Object>>) c.getList("badasns")) {
-					Integer asn = (Integer) value.get("asn");
-					String reason = (String) value.get("reason");
-					bad_asns.put(asn, reason);
+	@EventHandler(priority = EventPriority.MONITOR, ignoreCancelled=true)
+	public void onPlayerLogin(PlayerJoinEvent event) {
+		Player player = event.getPlayer();
+		SQLite.insert_ip(player);
+		final JailedPlayer jailedplayer = SQLite.get_jailed_player(player.getUniqueId());
+		if (jailedplayer == null) {
+			String jailed_friends = SQLite.get_ip_jailed(
+					player.getAddress().getHostString());
+			if (jailed_friends != null) {
+				Jail.instance.getLogger().info(player.getName()
+						+ " shares IPs with jailed players: " + jailed_friends);
+				for (Player p : Jail.instance.getServer().getOnlinePlayers()) {
+					if (p.isOp()) {
+						p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + player.getName()
+								+ " shares IPs with jailed players: " + jailed_friends);
+					}
 				}
-
-				Jail.instance.getLogger().info("Read bad_asns.yaml");
 			}
-		} catch (Exception e) {
-			Jail.instance.getLogger().severe("Error instantiating bad AS list " + e);
-			e.printStackTrace();
-			bad_asns = null;
+
+			InetAddress address = player.getAddress().getAddress();
+			String reason = GeoIP.check_asn(address);
+			if (reason != null) {
+				String as = GeoIP.getAs(address);
+				if (as != null) {
+					message_admins(player, as, reason);
+				}
+			}
+
+			return;
 		}
+
+		if (jailedplayer.to_be_released) {
+			/* as the player will not have an entity associated with them at this
+			 * stage, we have to try for a bit to see when they're done logging in
+			 * and then teleport them then */
+			final long start = System.currentTimeMillis();
+
+			new BukkitRunnable() {
+				@Override
+				public void run() {
+					if (System.currentTimeMillis() > start + 10 * 1000) {
+						this.cancel();
+						Jail.instance.getLogger().info("Unable to unjail " + jailedplayer.playername);
+					}
+
+					Player player = Jail.instance.getServer().getPlayer(jailedplayer.uuid);
+					if (player != null) {
+						player.teleport(jailedplayer.location);
+						SQLite.delete_player_info(player.getUniqueId());
+						Jail.instance.getLogger().info("Releasing " + jailedplayer.playername + " from jail.");
+						player.sendMessage(ChatColor.GREEN + "You have been released from jail.");
+						this.cancel();
+					}
+				}
+			}.runTaskTimer(Jail.instance, 20, 20);
+
+			return;
+		} else if (!jailedplayer.online) {
+			jailedplayer.online = true;
+			SQLite.update_player_location(jailedplayer.uuid,
+					player.getLocation());
+			SQLite.set_has_been_online(jailedplayer.uuid);
+		}
+
+		SQLite.insert_ip_jailed(player);
+		Jail.instance.getLogger().info("Jailed player " + player.getName() + " has connected.");
+		jailedplayer.add();
 	}
 
-	public static void close() {
-		if (asn4 != null) {
-			asn4.close();
-			asn4 = null;
-		}
-		if (asn6 != null) {
-			asn6.close();
-			asn6 = null;
-		}
-		if (country4 != null) {
-			country4.close();
-			country4 = null;
-		}
-		if (country6 != null) {
-			country6.close();
-			country6 = null;
-		}
-	}
+	public void message_admins(Player player, String as, String reason) {
+		String msg = String.format("%s is joining from bad network %s. Listed reason: %s", player.getName(), as, reason);
+		Jail.instance.getLogger().info(msg);
+		for (Player p : Jail.instance.getServer().getOnlinePlayers()) {
+			if (!p.isOp()) {
+				continue;
+			}
 
-	public static String getAs(InetAddress ip) {
-		if (asn4 == null || asn6 == null) {
-			return null;
+			p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + msg);
 		}
-
-		String as = null;
-		if (ip instanceof Inet4Address) {
-			as = asn4.getOrg(ip);
-		} else if (ip instanceof Inet6Address) {
-			as = asn6.getOrgV6(ip);
-		}
-		if (as == null) {
-			return null;
-		}
-
-		return as;
-	}
-
-	public static Integer getAsn(InetAddress ip) {
-		return getAsn(getAs(ip));
-	}
-
-	private static Pattern ASN_REGEX = Pattern.compile("^AS([0-9]+).*");
-	public static Integer getAsn(String as) {
-		if (as == null) {
-			return null;
-		}
-
-		Matcher m = ASN_REGEX.matcher(as);
-		if (!m.find()) {
-			Jail.instance.getLogger().info("Jail ASN regex did not match: " + as);
-			return null;
-		}
-		String match = m.group(1);
-		return Integer.valueOf(match);
-	}
-
-	public static String getCountry(InetAddress ip) {
-		if (country4 == null || country6 == null) {
-			return null;
-		}
-
-		Country country = null;
-		if (ip instanceof Inet4Address) {
-			country = country4.getCountry(ip);
-		} else if (ip instanceof Inet6Address) {
-			country = country6.getCountryV6(ip);
-		}
-		if (country == null) {
-			return null;
-		}
-
-		return country.getCode();
-	}
-
-	public static String check_asn(InetAddress address) {
-		if (GeoIP.bad_asns == null || GeoIP.bad_asns.isEmpty()) {
-			return null;
-		}
-
-		String as = GeoIP.getAs(address);
-		Integer asn = GeoIP.getAsn(as);
-		if (asn == null) {
-			return null;
-		}
-
-		String reason = GeoIP.bad_asns.get(asn);
-		if (reason == null) {
-			return null;
-		}
-		return reason;
 	}
 }
