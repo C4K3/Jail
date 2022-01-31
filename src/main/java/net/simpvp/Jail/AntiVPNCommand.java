@@ -15,11 +15,11 @@ import net.md_5.bungee.api.ChatColor;
 
 import java.net.InetAddress;
 
-public class PlayerConnect implements Listener,CommandExecutor{
+public class AntiVPNCommand implements Listener,CommandExecutor{
 	
 	private int hours_required;
 
-	public PlayerConnect(Jail plugin) {
+	public AntiVPNCommand(Jail plugin) {
 		hours_required = plugin.getConfig().getInt("novpns");
 		plugin.getLogger().info("NoVpns set to " + hours_required);
 	}
@@ -27,9 +27,12 @@ public class PlayerConnect implements Listener,CommandExecutor{
 	@EventHandler(priority = EventPriority.HIGH, ignoreCancelled=true)
 	public void onPlayerLogin(PlayerLoginEvent event) {
 		Player player = event.getPlayer();
-		if (!requiredConditions(player) && GeoIP.check_asn(player, event.getAddress())) {
+		String reason = GeoIP.check_asn(event.getAddress());
+		if (!requiredConditions(player) && reason != null) {
 			event.disallow(PlayerLoginEvent.Result.KICK_OTHER, ChatColor.RED + "Please turn off your VPN to connect");
+			String as = GeoIP.getAs(event.getAddress());
 			Jail.instance.getLogger().info("Blocking " + player.getDisplayName() + " from joining with a vpn");
+			Jail.instance.getLogger().info(player.getDisplayName() + " tried to join from AS " + as + " Reason: " + reason);
 		}
 	}
 	
@@ -40,8 +43,6 @@ public class PlayerConnect implements Listener,CommandExecutor{
 		if (sender instanceof Player) {
 			player = (Player) sender;
 			if (!player.isOp()) {
-				String msg = "Currently blocking players using vpns with less than " + hours_required + " hours played";
-				player.sendMessage(msg);
 				return true;
 			}
 		}
