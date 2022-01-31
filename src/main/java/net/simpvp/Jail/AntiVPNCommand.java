@@ -43,6 +43,7 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 		if (sender instanceof Player) {
 			player = (Player) sender;
 			if (!player.isOp()) {
+				sender.sendMessage(ChatColor.RED + "You must be an admin to use this command");
 				return true;
 			}
 		}
