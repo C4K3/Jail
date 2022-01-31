@@ -22,12 +22,12 @@ public class Jail extends JavaPlugin {
 		getServer().getPluginManager().registerEvents(new JailedEventListener(), this);
 		getServer().getPluginManager().registerEvents(new PlayerLogin(), this);
 		getServer().getPluginManager().registerEvents(new PlayerQuit(), this);
-		getServer().getPluginManager().registerEvents(new PlayerConnect(), this);
+		getServer().getPluginManager().registerEvents(new AntiVPNCommand(instance), this);
 		getCommand("jail").setExecutor(new Commands());
 		getCommand("unjail").setExecutor(new Commands());
 		getCommand("jailinfo").setExecutor(new Commands());
 		getCommand("jailreload").setExecutor(new Commands());
-		getCommand("novpns").setExecutor(new PlayerConnect());
+		getCommand("novpns").setExecutor(new AntiVPNCommand(instance));
 	}
 
 	public void onDisable() {
