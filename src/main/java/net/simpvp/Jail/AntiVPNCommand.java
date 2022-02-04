@@ -90,8 +90,7 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 			int played_ticks = p.getStatistic(Statistic.PLAY_ONE_MINUTE);
 			hours = played_ticks / (20 * 60 * 60);
 		}
-
-		hours_required = Jail.instance.getConfig().getInt("novpns");
+		
 		if (hours < hours_required) {
 			return false;
 		}
