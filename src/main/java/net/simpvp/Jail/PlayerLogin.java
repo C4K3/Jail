@@ -33,11 +33,12 @@ public class PlayerLogin implements Listener {
 			}
 
 			InetAddress address = player.getAddress().getAddress();
-			if (GeoIP.check_asn(player, address)) {
+			String reason = GeoIP.check_asn(address);
+			if (reason != null) {
 				String as = GeoIP.getAs(address);
-				Integer asn = GeoIP.getAsn(as);
-				String reason = GeoIP.bad_asns.get(asn);
-				message_admins(player,as,reason);
+				if (as != null) {
+					message_admins(player, as, reason);
+				}
 			}
 
 			return;
