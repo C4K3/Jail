@@ -44,6 +44,7 @@ public class Commands implements CommandExecutor {
 			} else if (label.equals("jailreload")) {
 				Config.loadConfig();
 				GeoIP.init();
+				AntiVPNCommand.hours_required = plugin.getConfig().getInt("novpns");;
 				send_message("Jail config has been reloaded.", player, ChatColor.GOLD);
 			}
 		} catch (java.sql.SQLException e) {
