@@ -17,7 +17,7 @@ import java.net.InetAddress;
 
 public class AntiVPNCommand implements Listener,CommandExecutor{
 	
-	private int hours_required;
+	public static int hours_required;
 
 	public AntiVPNCommand(Jail plugin) {
 		hours_required = plugin.getConfig().getInt("novpns");
