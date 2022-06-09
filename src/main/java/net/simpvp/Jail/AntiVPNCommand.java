@@ -30,9 +30,9 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 	public void onPlayerLogin(PlayerLoginEvent event) {
 		Player player = event.getPlayer();
 		String reason = GeoIP.check_asn(event.getAddress());
+		String as = GeoIP.getAs(event.getAddress());
 		if (!requiredConditions(player) && reason != null) {
 			event.disallow(PlayerLoginEvent.Result.KICK_OTHER, ChatColor.RED + "Please turn off your VPN to connect");
-			String as = GeoIP.getAs(event.getAddress());
 
 			String msg = String.format("[NoVPNs] Blocking %s from joining from %s. Reason: %s", player.getName(), as, reason);
 			Jail.instance.getLogger().info(msg);
@@ -49,6 +49,12 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 					p.sendMessage(ChatColor.RED + msg);
 				}
 			}
+		} else {
+			String msg = String.format("%s is joining from %s", player.getName(), as);
+			if (reason != null) {
+				msg += String.format(" (bad network: %s)", reason);
+			}
+			Jail.instance.getLogger().info(msg);
 		}
 	}
 	
