@@ -74,6 +74,8 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 			sender.sendMessage(ChatColor.GREEN + "/novpn will prevent players using vpns with less than the set amount of hours from joining. It is currently set to " + hours_required);
 			return true;
 		}
+
+		int previous_hours_required = hours_required;
 		
 		try {
 			hours_required = Integer.parseInt(args[0]);
@@ -86,10 +88,7 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 		Jail.instance.getConfig().set("novpns", hours_required);
 		Jail.instance.saveConfig();
 		
-		String m = ChatColor.GREEN + "/novpns hours required set to " + hours_required;
-		sender.sendMessage(m);
-		Jail.instance.getLogger().info(m);
-		
+		Commands.announce_message(String.format("Changed /novpns from %d to %d", previous_hours_required, hours_required), player);
 		return true;
 	}
 	

@@ -62,7 +62,7 @@ public class Commands implements CommandExecutor {
 			player.sendMessage(color + message);
 	}
 
-	private void announce_message(String message, Player player) {
+	public static void announce_message(String message, Player player) {
 		String playername = "";
 		if (player == null) {
 			playername = "CONSOLE";
