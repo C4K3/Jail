@@ -128,14 +128,15 @@ public class Commands implements CommandExecutor {
 					URLConnection conn = url.openConnection();
 					conn.connect();
 					BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-					String resp = reader.readLine();
-					if (resp == null) {
-						Jail.instance.getLogger().severe("Empty response from mojang API");
-						send_error(target_name, jailer_uuid);
-						return;
+					String line = null;
+					StringBuilder response = new StringBuilder();
+					while ((line = reader.readLine()) != null) {
+						response.append(line);
 					}
 
-					JSONObject j = new JSONObject(resp);
+					reader.close();
+
+					JSONObject j = new JSONObject(response.toString());
 					final String name = j.getString("name");
 					String uuid_str = j.getString("id");
 					uuid_str = uuid_str.replaceAll("(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})", "$1-$2-$3-$4-$5");
