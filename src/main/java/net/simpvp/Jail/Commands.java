@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.UUID;
 
 import org.json.JSONObject;
@@ -46,6 +47,8 @@ public class Commands implements CommandExecutor {
 				GeoIP.init();
 				AntiVPNCommand.hours_required = plugin.getConfig().getInt("novpns");;
 				send_message("Jail config has been reloaded.", player, ChatColor.GOLD);
+			} else if (label.equals("jailnotifications")) {
+				jail_notifications(sender, player);
 			}
 		} catch (java.sql.SQLException e) {
 			Jail.instance.getLogger().severe("Error handling command " + label + ": " + e);
@@ -71,10 +74,16 @@ public class Commands implements CommandExecutor {
 		}
 
 		plugin.getLogger().info("[" + playername + ": " + message + "]");
-		for (Player onlinePlayer : plugin.getServer().getOnlinePlayers()) {
-			if (onlinePlayer.isOp()) {
-				onlinePlayer.sendMessage(ChatColor.GRAY + "" + ChatColor.ITALIC + "[" + playername + ": " + message + "]");
+		for (Player p : plugin.getServer().getOnlinePlayers()) {
+			if (!p.isOp()) {
+				continue;
 			}
+
+			if (!notifications_enabled(p.getUniqueId())) {
+				continue;
+			}
+
+			p.sendMessage(String.format("%s%s[%s: %s]", ChatColor.GRAY, ChatColor.ITALIC, playername, message));
 		}
 	}
 
@@ -326,5 +335,29 @@ public class Commands implements CommandExecutor {
 		for (JailedPlayer j : jailed_players) {
 			send_message(j.get_info(), player, ChatColor.GOLD);
 		}
+	}
+
+	private static HashSet<UUID> notifications_disabled = new HashSet<>();
+	private void jail_notifications(CommandSender sender, Player player) {
+		if (player == null) {
+			sender.sendMessage("This command can only be used by players");
+			return;
+		}
+
+		UUID uuid = player.getUniqueId();
+		// remove returns true if the set contained the element
+		if (notifications_disabled.remove(uuid)) {
+			send_message("Notifications have been re-enabled", player, ChatColor.GREEN);
+		} else {
+			notifications_disabled.add(uuid);
+			send_message("Notifications have been disabled", player, ChatColor.GREEN);
+		}
+	}
+
+	/**
+	 * Returns true if the given player has notifications enabled, false if they have notifications disabled
+	 */
+	public static boolean notifications_enabled(UUID uuid) {
+		return !notifications_disabled.contains(uuid);
 	}
 }

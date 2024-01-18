@@ -22,13 +22,20 @@ public class PlayerLogin implements Listener {
 			String jailed_friends = SQLite.get_ip_jailed(
 					player.getAddress().getHostString());
 			if (jailed_friends != null) {
-				Jail.instance.getLogger().info(player.getName()
-						+ " shares IPs with jailed players: " + jailed_friends);
+				String msg = String.format("%s shares IPs with jailed players: %s", player.getName(), jailed_friends);
+				String msg_with_colors = String.format("%s%s%s", ChatColor.RED, ChatColor.BOLD, msg);
+
+				Jail.instance.getLogger().info(msg);
 				for (Player p : Jail.instance.getServer().getOnlinePlayers()) {
-					if (p.isOp()) {
-						p.sendMessage(ChatColor.RED + "" + ChatColor.BOLD + player.getName()
-								+ " shares IPs with jailed players: " + jailed_friends);
+					if (!p.isOp()) {
+						continue;
 					}
+
+					if (!Commands.notifications_enabled(p.getUniqueId())) {
+						continue;
+					}
+
+					p.sendMessage(msg_with_colors);
 				}
 			}
 
@@ -87,6 +94,10 @@ public class PlayerLogin implements Listener {
 		Jail.instance.getLogger().info(msg);
 		for (Player p : Jail.instance.getServer().getOnlinePlayers()) {
 			if (!p.isOp()) {
+				continue;
+			}
+
+			if (!Commands.notifications_enabled(p.getUniqueId())) {
 				continue;
 			}
 

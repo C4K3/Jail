@@ -16,3 +16,5 @@ commands:
     description: Reload the jail config.
   novpns:
     description: Turn off vpns.
+  jailnotifications:
+    description: Turn on or off notifications from this plugin

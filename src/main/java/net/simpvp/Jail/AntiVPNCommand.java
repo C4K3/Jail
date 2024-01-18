@@ -46,6 +46,10 @@ public class AntiVPNCommand implements Listener,CommandExecutor{
 						continue;
 					}
 
+					if (!Commands.notifications_enabled(p.getUniqueId())) {
+						continue;
+					}
+
 					p.sendMessage(ChatColor.RED + msg);
 				}
 			}

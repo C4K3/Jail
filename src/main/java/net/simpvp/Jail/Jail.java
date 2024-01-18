@@ -29,6 +29,7 @@ public class Jail extends JavaPlugin {
 		getCommand("jailinfo").setExecutor(commands);
 		getCommand("jailreload").setExecutor(commands);
 		getCommand("novpns").setExecutor(commands);
+		getCommand("jailnotifications").setExecutor(commands);
 	}
 
 	public void onDisable() {
